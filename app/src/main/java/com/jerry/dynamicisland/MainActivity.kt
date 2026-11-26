@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -31,6 +34,10 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     private var overlayGranted by mutableStateOf(false)
+    private var islandWidth by mutableStateOf(220f)
+    private var glassOpacity by mutableStateOf(82f)
+    private var blurStrength by mutableStateOf(28f)
+    private var topOffset by mutableStateOf(8f)
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -39,6 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshPermission()
+        loadSettings()
 
         if (Build.VERSION.SDK_INT >= 33) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -48,18 +56,21 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(24.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text("Dynamic Island", style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Floating island for Android")
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(6.dp))
+                        Text("Customize your floating island")
+                        Spacer(Modifier.height(22.dp))
                         Text(
                             if (overlayGranted) "Overlay permission: Granted"
                             else "Overlay permission: Not granted"
                         )
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = {
                                 if (!Settings.canDrawOverlays(this@MainActivity)) {
@@ -72,28 +83,58 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Grant overlay permission")
-                        }
+                        ) { Text("Grant overlay permission") }
+
+                        Spacer(Modifier.height(24.dp))
+                        Text("Island width: ${islandWidth.toInt()} dp")
+                        Slider(
+                            value = islandWidth,
+                            onValueChange = { islandWidth = it },
+                            valueRange = 160f..340f
+                        )
+
+                        Text("Glass opacity: ${glassOpacity.toInt()}%")
+                        Slider(
+                            value = glassOpacity,
+                            onValueChange = { glassOpacity = it },
+                            valueRange = 35f..100f
+                        )
+
+                        Text("Background blur: ${blurStrength.toInt()}")
+                        Slider(
+                            value = blurStrength,
+                            onValueChange = { blurStrength = it },
+                            valueRange = 0f..50f
+                        )
+
+                        Text("Top position: ${topOffset.toInt()} dp")
+                        Slider(
+                            value = topOffset,
+                            onValueChange = { topOffset = it },
+                            valueRange = 0f..120f
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = { saveSettingsAndRefresh() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Apply appearance") }
+
                         Spacer(Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Button(
                                 onClick = { startIsland() },
                                 enabled = overlayGranted,
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Start Island")
-                            }
+                            ) { Text("Start Island") }
                             Spacer(Modifier.padding(horizontal = 4.dp))
                             Button(
                                 onClick = { stopIsland() },
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Stop")
-                            }
+                            ) { Text("Stop") }
                         }
-                        Spacer(Modifier.height(20.dp))
-                        Text("Allow Display over other apps, return here, then tap Start Island.")
+                        Spacer(Modifier.height(16.dp))
+                        Text("Tip: drag the island left or right to reposition it. Tap to expand or collapse.")
                     }
                 }
             }
@@ -109,6 +150,27 @@ class MainActivity : ComponentActivity() {
         overlayGranted = Settings.canDrawOverlays(this)
     }
 
+    private fun loadSettings() {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        islandWidth = prefs.getFloat(KEY_WIDTH, 220f)
+        glassOpacity = prefs.getFloat(KEY_OPACITY, 82f)
+        blurStrength = prefs.getFloat(KEY_BLUR, 28f)
+        topOffset = prefs.getFloat(KEY_TOP, 8f)
+    }
+
+    private fun saveSettingsAndRefresh() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putFloat(KEY_WIDTH, islandWidth)
+            .putFloat(KEY_OPACITY, glassOpacity)
+            .putFloat(KEY_BLUR, blurStrength)
+            .putFloat(KEY_TOP, topOffset)
+            .apply()
+
+        startService(
+            Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_REFRESH)
+        )
+    }
+
     private fun startIsland() {
         val intent = Intent(this, OverlayService::class.java)
             .setAction(OverlayService.ACTION_START)
@@ -119,5 +181,13 @@ class MainActivity : ComponentActivity() {
         startService(
             Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP)
         )
+    }
+
+    companion object {
+        const val PREFS = "dynamic_island_settings"
+        const val KEY_WIDTH = "island_width"
+        const val KEY_OPACITY = "glass_opacity"
+        const val KEY_BLUR = "blur_strength"
+        const val KEY_TOP = "top_offset"
     }
 }
