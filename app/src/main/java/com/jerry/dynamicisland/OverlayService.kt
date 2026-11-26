@@ -6,58 +6,25 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-class OverlayService : LifecycleService(), SavedStateRegistryOwner {
-    private val savedStateController = SavedStateRegistryController.create(this)
-
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateController.savedStateRegistry
-
-    override fun onCreate() {
-        savedStateController.performAttach()
-        savedStateController.performRestore(null)
-        super.onCreate()
-    }
-
+class OverlayService : LifecycleService() {
     private var windowManager: WindowManager? = null
-    private var islandView: ComposeView? = null
-    private var expanded by mutableStateOf(false)
+    private var islandView: View? = null
+    private var expanded = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -79,14 +46,9 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
 
     private fun startAsForeground() {
         val manager = getSystemService(NotificationManager::class.java)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Dynamic Island",
-                    NotificationManager.IMPORTANCE_LOW
-                )
+                NotificationChannel(CHANNEL_ID, "Dynamic Island", NotificationManager.IMPORTANCE_LOW)
             )
         }
 
@@ -109,9 +71,7 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
 
         if (Build.VERSION.SDK_INT >= 34) {
             ServiceCompat.startForeground(
-                this,
-                NOTIFICATION_ID,
-                notification,
+                this, NOTIFICATION_ID, notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             )
         } else {
@@ -121,56 +81,12 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
 
     private fun showIsland() {
         if (!Settings.canDrawOverlays(this) || islandView != null) return
-
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val view = ComposeView(this)
-        view.setViewTreeLifecycleOwner(this)
-        view.setViewTreeSavedStateRegistryOwner(this)
-
-        view.setContent {
-            MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().background(Color.Transparent),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .width(if (expanded) 320.dp else 176.dp)
-                            .background(Color.Black, RoundedCornerShape(28.dp))
-                            .animateContentSize()
-                            .clickable { expanded = !expanded }
-                            .padding(horizontal = 18.dp, vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("●", color = Color(0xFF45D483))
-                            Text(
-                                if (expanded) "Dynamic Island" else "Island",
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text("⋯", color = Color.LightGray)
-                        }
-
-                        if (expanded) {
-                            Spacer(Modifier.height(14.dp))
-                            Text("Your Android island is active", color = Color.White)
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Tap the island to collapse it.",
-                                color = Color(0xFFB8B8B8),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
         }
+        islandView = root
+        renderIsland(root)
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -181,16 +97,80 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (8 * resources.displayMetrics.density).toInt()
+            y = dp(8)
         }
 
         try {
-            windowManager?.addView(view, params)
-            islandView = view
+            windowManager?.addView(root, params)
         } catch (_: Exception) {
-            view.disposeComposition()
+            islandView = null
         }
     }
+
+    private fun renderIsland(root: FrameLayout) {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dp(28).toFloat()
+            }
+            layoutParams = FrameLayout.LayoutParams(
+                if (expanded) dp(320) else dp(176),
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            )
+            isClickable = true
+            setOnClickListener {
+                expanded = !expanded
+                renderIsland(root)
+            }
+        }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(makeText("●", 16f, Color.rgb(69, 212, 131)), LinearLayout.LayoutParams(0, dp(24), 1f))
+        header.addView(
+            makeText(if (expanded) "Dynamic Island" else "Island", 14f, Color.WHITE, true),
+            LinearLayout.LayoutParams(0, dp(24), 3f)
+        )
+        header.addView(makeText("⋯", 18f, Color.LTGRAY), LinearLayout.LayoutParams(0, dp(24), 1f))
+        panel.addView(header)
+
+        if (expanded) {
+            val detail = makeText("Your Android island is active", 14f, Color.WHITE)
+            val detailParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(32)
+            ).apply { topMargin = dp(14) }
+            panel.addView(detail, detailParams)
+            panel.addView(
+                makeText("Tap the island to collapse it.", 12f, Color.LTGRAY),
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(22))
+            )
+        }
+
+        root.removeAllViews()
+        root.addView(panel)
+    }
+
+    private fun makeText(
+        value: String,
+        size: Float,
+        color: Int,
+        bold: Boolean = false
+    ) = TextView(this).apply {
+        text = value
+        textSize = size
+        setTextColor(color)
+        gravity = Gravity.CENTER
+        if (bold) setTypeface(typeface, Typeface.BOLD)
+        maxLines = 1
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
 
     private fun removeIsland() {
         islandView?.let { view ->
@@ -198,7 +178,6 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
                 windowManager?.removeView(view)
             } catch (_: Exception) {
             }
-            view.disposeComposition()
         }
         islandView = null
     }
