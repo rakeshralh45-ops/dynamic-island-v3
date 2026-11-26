@@ -37,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
 
 class OverlayService : LifecycleService() {
     private var windowManager: WindowManager? = null
@@ -109,7 +109,7 @@ class OverlayService : LifecycleService() {
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val view = ComposeView(this)
-        ViewTreeLifecycleOwner.set(view, this)
+        view.setViewTreeLifecycleOwner(this)
 
         view.setContent {
             MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
