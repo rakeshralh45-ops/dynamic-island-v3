@@ -38,8 +38,23 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-class OverlayService : LifecycleService() {
+class OverlayService : LifecycleService(), SavedStateRegistryOwner {
+    private val savedStateController = SavedStateRegistryController.create(this)
+
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateController.savedStateRegistry
+
+    override fun onCreate() {
+        savedStateController.performAttach()
+        savedStateController.performRestore(null)
+        super.onCreate()
+    }
+
     private var windowManager: WindowManager? = null
     private var islandView: ComposeView? = null
     private var expanded by mutableStateOf(false)
@@ -110,6 +125,7 @@ class OverlayService : LifecycleService() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val view = ComposeView(this)
         view.setViewTreeLifecycleOwner(this)
+        view.setViewTreeSavedStateRegistryOwner(this)
 
         view.setContent {
             MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
