@@ -102,7 +102,6 @@ class OverlayService : LifecycleService() {
         renderIsland(root)
 
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        val blur = prefs.getFloat(MainActivity.KEY_BLUR, 28f).toInt()
         val islandWidth = prefs.getFloat(MainActivity.KEY_WIDTH, 220f).toInt()
             .coerceIn(160, 340)
         val params = WindowManager.LayoutParams(
@@ -115,10 +114,6 @@ class OverlayService : LifecycleService() {
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             y = dp(prefs.getFloat(MainActivity.KEY_TOP, 8f).toInt())
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blur > 0) {
-                flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                setBlurBehindRadius(dp(blur))
-            }
         }
         overlayParams = params
 
