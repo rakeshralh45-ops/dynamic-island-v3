@@ -29,6 +29,9 @@ class OverlayService : LifecycleService() {
     private var islandView: FrameLayout? = null
     private var overlayParams: WindowManager.LayoutParams? = null
     private var expanded = false
+    private var notificationApp = ""
+    private var notificationTitle = ""
+    private var notificationText = ""
     private var downRawX = 0f
     private var downRawY = 0f
     private var initialX = 0
@@ -49,6 +52,24 @@ class OverlayService : LifecycleService() {
                 if (islandView != null) {
                     removeIsland()
                     showIsland()
+                }
+            }
+            ACTION_NOTIFICATION -> {
+                notificationApp = intent.getStringExtra(EXTRA_NOTIFICATION_APP).orEmpty()
+                notificationTitle = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE).orEmpty()
+                notificationText = intent.getStringExtra(EXTRA_NOTIFICATION_TEXT).orEmpty()
+                islandView?.let { view ->
+                    expanded = true
+                    renderIsland(view)
+                    overlayParams?.let { params ->
+                        params.width = dp(currentIslandWidth(
+                            getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+                        ))
+                        try {
+                            windowManager?.updateViewLayout(view, params)
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
             }
             ACTION_START, null -> {
@@ -168,14 +189,33 @@ class OverlayService : LifecycleService() {
             val detailParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(32)
             ).apply { topMargin = dp(14) }
-            panel.addView(
-                makeText("Your Android island is active", 14f, Color.WHITE),
-                detailParams
-            )
-            panel.addView(
-                makeText("Drag to move • Tap to collapse", 12f, Color.LTGRAY),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(22))
-            )
+            if (notificationTitle.isNotBlank() || notificationText.isNotBlank()) {
+                panel.addView(
+                    makeText(notificationApp, 11f, Color.LTGRAY),
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(20))
+                )
+                if (notificationTitle.isNotBlank()) {
+                    panel.addView(
+                        makeText(notificationTitle, 14f, Color.WHITE, true),
+                        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(26))
+                    )
+                }
+                if (notificationText.isNotBlank()) {
+                    panel.addView(
+                        makeText(notificationText, 12f, Color.LTGRAY, maxLines = 2),
+                        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(38))
+                    )
+                }
+            } else {
+                panel.addView(
+                    makeText("Your Android island is active", 14f, Color.WHITE),
+                    detailParams
+                )
+                panel.addView(
+                    makeText("Drag to move • Tap to collapse", 12f, Color.LTGRAY),
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(22))
+                )
+            }
         }
 
         panel.setOnTouchListener { _, event ->
@@ -242,14 +282,16 @@ class OverlayService : LifecycleService() {
         value: String,
         size: Float,
         color: Int,
-        bold: Boolean = false
+        bold: Boolean = false,
+        maxLines: Int = 1
     ) = TextView(this).apply {
         text = value
         textSize = size
         setTextColor(color)
         gravity = Gravity.CENTER
         if (bold) setTypeface(typeface, Typeface.BOLD)
-        maxLines = 1
+        this.maxLines = maxLines
+        ellipsize = android.text.TextUtils.TruncateAt.END
     }
 
     private fun dp(value: Int): Int =
@@ -275,6 +317,10 @@ class OverlayService : LifecycleService() {
         const val ACTION_START = "com.jerry.dynamicisland.START"
         const val ACTION_STOP = "com.jerry.dynamicisland.STOP"
         const val ACTION_REFRESH = "com.jerry.dynamicisland.REFRESH"
+        const val ACTION_NOTIFICATION = "com.jerry.dynamicisland.NOTIFICATION"
+        const val EXTRA_NOTIFICATION_APP = "notification_app"
+        const val EXTRA_NOTIFICATION_TITLE = "notification_title"
+        const val EXTRA_NOTIFICATION_TEXT = "notification_text"
         private const val CHANNEL_ID = "dynamic_island_service"
         private const val NOTIFICATION_ID = 1001
     }
