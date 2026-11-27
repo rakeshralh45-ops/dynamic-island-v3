@@ -34,7 +34,8 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     private var overlayGranted by mutableStateOf(false)
-    private var islandWidth by mutableStateOf(220f)
+    private var islandWidth by mutableStateOf(280f)
+    private var collapsedIslandWidth by mutableStateOf(180f)
     private var glassOpacity by mutableStateOf(82f)
     private var blurStrength by mutableStateOf(28f)
     private var topOffset by mutableStateOf(8f)
@@ -91,6 +92,13 @@ class MainActivity : ComponentActivity() {
                             value = islandWidth,
                             onValueChange = { islandWidth = it },
                             valueRange = 160f..340f
+                        )
+
+                        Text("Collapsed width: ${collapsedIslandWidth.toInt()} dp")
+                        Slider(
+                            value = collapsedIslandWidth,
+                            onValueChange = { collapsedIslandWidth = it },
+                            valueRange = 140f..280f
                         )
 
                         Text("Glass opacity: ${glassOpacity.toInt()}%")
@@ -152,7 +160,8 @@ class MainActivity : ComponentActivity() {
 
     private fun loadSettings() {
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        islandWidth = prefs.getFloat(KEY_WIDTH, 220f)
+        islandWidth = prefs.getFloat(KEY_WIDTH, 280f)
+        collapsedIslandWidth = prefs.getFloat(KEY_COLLAPSED_WIDTH, 180f)
         glassOpacity = prefs.getFloat(KEY_OPACITY, 82f)
         blurStrength = prefs.getFloat(KEY_BLUR, 28f)
         topOffset = prefs.getFloat(KEY_TOP, 8f)
@@ -161,6 +170,7 @@ class MainActivity : ComponentActivity() {
     private fun saveSettingsAndRefresh() {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
             .putFloat(KEY_WIDTH, islandWidth)
+            .putFloat(KEY_COLLAPSED_WIDTH, collapsedIslandWidth)
             .putFloat(KEY_OPACITY, glassOpacity)
             .putFloat(KEY_BLUR, blurStrength)
             .putFloat(KEY_TOP, topOffset)
@@ -186,6 +196,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val PREFS = "dynamic_island_settings"
         const val KEY_WIDTH = "island_width"
+        const val KEY_COLLAPSED_WIDTH = "collapsed_island_width"
         const val KEY_OPACITY = "glass_opacity"
         const val KEY_BLUR = "blur_strength"
         const val KEY_TOP = "top_offset"
