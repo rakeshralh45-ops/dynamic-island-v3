@@ -4,10 +4,18 @@ import android.app.Notification
 import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
+import androidx.core.content.ContextCompat
 
 class IslandNotificationListener : NotificationListenerService() {
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        Log.i(TAG, "Notification listener connected")
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
+
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         if (!prefs.getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)) return
 
@@ -36,9 +44,15 @@ class IslandNotificationListener : NotificationListenerService() {
         }
 
         try {
-            startService(update)
-        } catch (_: Exception) {
-            // The user can still see the notification in the system shade if the overlay service is stopped.
+            // A foreground-service start is reliable when Android has put the app in the background.
+            ContextCompat.startForegroundService(this, update)
+            Log.i(TAG, "Forwarded notification from ${sbn.packageName}")
+        } catch (error: Exception) {
+            Log.e(TAG, "Could not forward notification from ${sbn.packageName}", error)
         }
+    }
+
+    companion object {
+        private const val TAG = "IslandNotification"
     }
 }
