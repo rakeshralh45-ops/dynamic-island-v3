@@ -43,6 +43,8 @@ class OverlayService : LifecycleService() {
 
         when (intent?.action) {
             ACTION_STOP -> {
+                getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit()
+                    .putBoolean(MainActivity.KEY_ISLAND_RUNNING, false).apply()
                 removeIsland()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -58,6 +60,12 @@ class OverlayService : LifecycleService() {
                 notificationApp = intent.getStringExtra(EXTRA_NOTIFICATION_APP).orEmpty()
                 notificationTitle = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE).orEmpty()
                 notificationText = intent.getStringExtra(EXTRA_NOTIFICATION_TEXT).orEmpty()
+                if (islandView == null && getSharedPreferences(
+                        MainActivity.PREFS, MODE_PRIVATE
+                    ).getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)) {
+                    startAsForeground()
+                    showIsland()
+                }
                 islandView?.let { view ->
                     expanded = true
                     renderIsland(view)
@@ -73,6 +81,8 @@ class OverlayService : LifecycleService() {
                 }
             }
             ACTION_START, null -> {
+                getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit()
+                    .putBoolean(MainActivity.KEY_ISLAND_RUNNING, true).apply()
                 startAsForeground()
                 showIsland()
             }
