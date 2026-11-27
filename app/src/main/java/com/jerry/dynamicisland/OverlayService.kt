@@ -60,11 +60,15 @@ class OverlayService : LifecycleService() {
                 notificationApp = intent.getStringExtra(EXTRA_NOTIFICATION_APP).orEmpty()
                 notificationTitle = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE).orEmpty()
                 notificationText = intent.getStringExtra(EXTRA_NOTIFICATION_TEXT).orEmpty()
-                if (islandView == null && getSharedPreferences(
-                        MainActivity.PREFS, MODE_PRIVATE
-                    ).getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)) {
+
+                val islandEnabled = getSharedPreferences(
+                    MainActivity.PREFS, MODE_PRIVATE
+                ).getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)
+
+                if (islandEnabled) {
+                    // Reassert foreground state before handling an event delivered while backgrounded.
                     startAsForeground()
-                    showIsland()
+                    if (islandView == null) showIsland()
                 }
                 islandView?.let { view ->
                     expanded = true
