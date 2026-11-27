@@ -8,6 +8,8 @@ import android.service.notification.StatusBarNotification
 class IslandNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        if (!prefs.getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)) return
 
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
