@@ -102,8 +102,7 @@ class OverlayService : LifecycleService() {
         renderIsland(root)
 
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        val islandWidth = prefs.getFloat(MainActivity.KEY_WIDTH, 220f).toInt()
-            .coerceIn(160, 340)
+        val islandWidth = currentIslandWidth(prefs)
         val params = WindowManager.LayoutParams(
             dp(islandWidth),
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -127,7 +126,7 @@ class OverlayService : LifecycleService() {
 
     private fun renderIsland(root: FrameLayout) {
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        val width = prefs.getFloat(MainActivity.KEY_WIDTH, 220f).toInt()
+        val width = currentIslandWidth(prefs)
         val opacity = prefs.getFloat(MainActivity.KEY_OPACITY, 82f).toInt()
             .coerceIn(0, 100)
         val alpha = (opacity * 255 / 100).coerceIn(0, 255)
@@ -212,6 +211,13 @@ class OverlayService : LifecycleService() {
                     if (!dragging) {
                         expanded = !expanded
                         renderIsland(view)
+                        params.width = dp(currentIslandWidth(
+                            getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+                        ))
+                        try {
+                            windowManager?.updateViewLayout(view, params)
+                        } catch (_: Exception) {
+                        }
                     }
                     true
                 }
@@ -222,6 +228,14 @@ class OverlayService : LifecycleService() {
 
         root.removeAllViews()
         root.addView(panel)
+    }
+
+    private fun currentIslandWidth(prefs: android.content.SharedPreferences): Int {
+        return if (expanded) {
+            prefs.getFloat(MainActivity.KEY_WIDTH, 280f).toInt().coerceIn(160, 340)
+        } else {
+            prefs.getFloat(MainActivity.KEY_COLLAPSED_WIDTH, 180f).toInt().coerceIn(140, 280)
+        }
     }
 
     private fun makeText(
