@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     private var overlayGranted by mutableStateOf(false)
+    private var notificationAccessGranted by mutableStateOf(false)
     private var islandWidth by mutableStateOf(280f)
     private var collapsedIslandWidth by mutableStateOf(180f)
     private var glassOpacity by mutableStateOf(82f)
@@ -85,6 +86,19 @@ class MainActivity : ComponentActivity() {
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Grant overlay permission") }
+
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            if (notificationAccessGranted) "Notification access: Granted"
+                            else "Notification access: Not granted"
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Grant notification access") }
 
                         Spacer(Modifier.height(24.dp))
                         Text("Island width: ${islandWidth.toInt()} dp")
@@ -156,6 +170,10 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshPermission() {
         overlayGranted = Settings.canDrawOverlays(this)
+        val enabledListeners = Settings.Secure.getString(
+            contentResolver, "enabled_notification_listeners"
+        ).orEmpty()
+        notificationAccessGranted = enabledListeners.contains(packageName)
     }
 
     private fun loadSettings() {
