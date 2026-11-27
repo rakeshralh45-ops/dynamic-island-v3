@@ -215,6 +215,7 @@ class MainActivity : ComponentActivity() {
         const val PREFS = "dynamic_island_settings"
         const val KEY_WIDTH = "island_width"
         const val KEY_COLLAPSED_WIDTH = "collapsed_island_width"
+        const val KEY_ISLAND_RUNNING = "island_running"
         const val KEY_OPACITY = "glass_opacity"
         const val KEY_BLUR = "blur_strength"
         const val KEY_TOP = "top_offset"
