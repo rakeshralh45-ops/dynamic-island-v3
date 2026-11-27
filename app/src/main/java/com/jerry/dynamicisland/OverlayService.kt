@@ -61,28 +61,41 @@ class OverlayService : LifecycleService() {
                 notificationTitle = intent.getStringExtra(EXTRA_NOTIFICATION_TITLE).orEmpty()
                 notificationText = intent.getStringExtra(EXTRA_NOTIFICATION_TEXT).orEmpty()
 
-                val islandEnabled = getSharedPreferences(
-                    MainActivity.PREFS, MODE_PRIVATE
-                ).getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)
+                val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+                val islandEnabled = prefs.getBoolean(MainActivity.KEY_ISLAND_RUNNING, false)
+                prefs.edit().putString(
+                    MainActivity.KEY_DEBUG_LAST_FORWARD,
+                    "OverlayService received: $notificationApp | $notificationTitle | $notificationText"
+                ).apply()
 
                 if (islandEnabled) {
-                    // Reassert foreground state before handling an event delivered while backgrounded.
                     startAsForeground()
                     if (islandView == null) showIsland()
+                } else {
+                    prefs.edit().putString(
+                        MainActivity.KEY_DEBUG_LAST_FORWARD,
+                        "OverlayService received event, but island-running flag is FALSE"
+                    ).apply()
                 }
+
                 islandView?.let { view ->
                     expanded = true
                     renderIsland(view)
                     overlayParams?.let { params ->
-                        params.width = dp(currentIslandWidth(
-                            getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-                        ))
+                        params.width = dp(currentIslandWidth(prefs))
                         try {
                             windowManager?.updateViewLayout(view, params)
-                        } catch (_: Exception) {
+                        } catch (error: Exception) {
+                            prefs.edit().putString(
+                                MainActivity.KEY_DEBUG_LAST_FORWARD,
+                                "Overlay updateViewLayout failed: ${error.javaClass.simpleName}: ${error.message}"
+                            ).apply()
                         }
                     }
-                }
+                } ?: prefs.edit().putString(
+                    MainActivity.KEY_DEBUG_LAST_FORWARD,
+                    "OverlayService received event, but islandView is NULL (overlay may not be attached)"
+                ).apply()
             }
             ACTION_START, null -> {
                 getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE).edit()
@@ -153,7 +166,11 @@ class OverlayService : LifecycleService() {
 
         try {
             windowManager?.addView(root, params)
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            prefs.edit().putString(
+                MainActivity.KEY_DEBUG_LAST_FORWARD,
+                "addView failed: ${error.javaClass.simpleName}: ${error.message}"
+            ).apply()
             islandView = null
             overlayParams = null
         }
