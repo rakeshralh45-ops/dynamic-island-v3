@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     private var glassOpacity by mutableStateOf(82f)
     private var blurStrength by mutableStateOf(28f)
     private var topOffset by mutableStateOf(8f)
+    private var diagnostics by mutableStateOf("No notification test recorded yet.")
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         refreshPermission()
         loadSettings()
+        loadDiagnostics()
 
         if (Build.VERSION.SDK_INT >= 33) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -100,7 +102,15 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Grant notification access") }
 
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(20.dp))
+                        Text("Notification diagnostics", style = MaterialTheme.typography.titleMedium)
+                        Text(diagnostics)
+                        Button(
+                            onClick = { loadDiagnostics() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Refresh diagnostics") }
+
+                        Spacer(Modifier.height(12.dp))
                         Text("Island width: ${islandWidth.toInt()} dp")
                         Slider(
                             value = islandWidth,
@@ -166,6 +176,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermission()
+        loadDiagnostics()
+    }
+
+    private fun loadDiagnostics() {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val listener = prefs.getString(KEY_DEBUG_LISTENER, "UNKNOWN")
+        val seen = prefs.getString(KEY_DEBUG_LAST_SEEN, "No notification callback received yet")
+        val forwarded = prefs.getString(KEY_DEBUG_LAST_FORWARD, "No forwarding attempt yet")
+        diagnostics = "Listener: $listener\nLast notification: $seen\nForwarding: $forwarded"
     }
 
     private fun refreshPermission() {
@@ -219,5 +238,9 @@ class MainActivity : ComponentActivity() {
         const val KEY_OPACITY = "glass_opacity"
         const val KEY_BLUR = "blur_strength"
         const val KEY_TOP = "top_offset"
+        const val KEY_DEBUG_LISTENER = "debug_listener"
+        const val KEY_DEBUG_LAST_SEEN = "debug_last_seen"
+        const val KEY_DEBUG_LAST_SEEN_AT = "debug_last_seen_at"
+        const val KEY_DEBUG_LAST_FORWARD = "debug_last_forward"
     }
 }
